@@ -11,6 +11,27 @@ SecureHST Insights is a managed data visualization and business intelligence pla
 | RAM | 4 GB |
 | CPUs | 2 |
 
+### Platform Compatibility
+
+All container images are built for **linux/amd64**. This works on every major OS:
+
+| Platform | Notes |
+|----------|-------|
+| **Linux (x86_64)** | Runs natively — no extra steps. |
+| **macOS (Intel)** | Runs natively — no extra steps. |
+| **macOS (Apple Silicon)** | Runs via emulation. **Enable Rosetta** in Docker Desktop for best performance (see below). |
+| **Windows (x86_64)** | Runs natively inside Docker Desktop's Linux VM — no extra steps. |
+
+#### Apple Silicon (M1/M2/M3/M4) Setup
+
+Docker Desktop emulates amd64 on Apple Silicon Macs. For significantly better performance, enable Rosetta:
+
+1. Open **Docker Desktop** → **Settings** → **General**
+2. Check **Use Rosetta for x86_64/amd64 emulation on Apple Silicon**
+3. Click **Apply & restart**
+
+> Without Rosetta enabled the containers will still run, but you may notice slower startup times and higher CPU usage.
+
 ## Quick Start
 
 1. **Clone this repository**
@@ -469,6 +490,18 @@ Thumbnail generation uses Playwright and can take a moment on first access. Chec
 
 ```bash
 docker compose logs -f superset-worker
+```
+
+### Slow performance on Apple Silicon Macs
+
+The images are linux/amd64 and run under emulation on M-series Macs. Enable Rosetta in Docker Desktop for a significant speedup:
+
+**Docker Desktop** → **Settings** → **General** → check **Use Rosetta for x86_64/amd64 emulation on Apple Silicon** → **Apply & restart**
+
+Then restart the stack:
+
+```bash
+docker compose down && docker compose up -d
 ```
 
 ### "SECRET_KEY must be set" error

@@ -3,27 +3,49 @@ x-superset-image: &superset-image
 
 x-superset-volumes:
   &superset-volumes
-  - ./docker:/app/docker
-  - ./assets:/app/superset_home/assets
+  - ./docker/requirements-local.txt:/app/docker/requirements-local.txt
+  - ./assets/logo.png:/app/superset/static/assets/images/logo.png
+  - ./assets/favicon.png:/app/superset/static/assets/images/favicon.png
   - superset_home:/app/superset_home
 
-x-superset-env: &superset-env
+x-superset-defaults: &superset-defaults
   env_file:
     - path: .env
       required: true
+  environment:
+    DATABASE_DB: superset
+    DATABASE_HOST: db
+    DATABASE_PORT: "5432"
+    DATABASE_DIALECT: postgresql
+    DATABASE_USER: superset
+    POSTGRES_DB: superset
+    POSTGRES_USER: superset
+    POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+    PYTHONPATH: /app/pythonpath:/app/docker/pythonpath_dev
+    PYTHONUNBUFFERED: "1"
+    FLASK_DEBUG: "false"
+    SUPERSET_LOG_LEVEL: info
+    SUPERSET_LOAD_EXAMPLES: "no"
+    COMPOSE_PROJECT_NAME: superset
 
 services:
   db:
     image: postgres:16
+    platform: linux/amd64
     container_name: superset_db
     restart: unless-stopped
-    <<: *superset-env
+    environment:
+      POSTGRES_DB: superset
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
     volumes:
       - db_home:/var/lib/postgresql/data
-      - ./docker/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
 
   redis:
     image: redis:7
+    platform: linux/amd64
     container_name: superset_cache
     restart: unless-stopped
     volumes:
@@ -31,9 +53,10 @@ services:
 
   superset-init:
     image: *superset-image
+    platform: linux/amd64
     container_name: superset_init
     command: ["/app/docker/docker-init.sh"]
-    <<: *superset-env
+    <<: *superset-defaults
     depends_on:
       db:
         condition: service_started
@@ -46,9 +69,10 @@ services:
 
   superset:
     image: *superset-image
+    platform: linux/amd64
     container_name: superset_app
     command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
-    <<: *superset-env
+    <<: *superset-defaults
     restart: unless-stopped
     ports:
       - "${SUPERSET_PORT:-8088}:8088"
@@ -60,9 +84,10 @@ services:
 
   superset-worker:
     image: *superset-image
+    platform: linux/amd64
     container_name: superset_worker
     command: ["/app/docker/docker-bootstrap.sh", "worker"]
-    <<: *superset-env
+    <<: *superset-defaults
     restart: unless-stopped
     depends_on:
       superset-init:
@@ -78,9 +103,10 @@ services:
 
   superset-worker-beat:
     image: *superset-image
+    platform: linux/amd64
     container_name: superset_worker_beat
     command: ["/app/docker/docker-bootstrap.sh", "beat"]
-    <<: *superset-env
+    <<: *superset-defaults
     restart: unless-stopped
     depends_on:
       superset-init:
