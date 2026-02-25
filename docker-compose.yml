@@ -26,7 +26,7 @@ x-superset-defaults: &superset-defaults
     PYTHONPATH: /app/pythonpath:/app/docker/pythonpath_dev
     PYTHONUNBUFFERED: "1"
     FLASK_DEBUG: "false"
-    SUPERSET_LOG_LEVEL: info
+    INSIGHTS_LOG_LEVEL: info
     SUPERSET_LOAD_EXAMPLES: "no"
     COMPOSE_PROJECT_NAME: superset
 
@@ -75,7 +75,7 @@ services:
     <<: *superset-defaults
     restart: unless-stopped
     ports:
-      - "${SUPERSET_PORT:-8088}:8088"
+      - "${INSIGHTS_PORT:-8088}:8088"
     depends_on:
       superset-init:
         condition: service_completed_successfully
