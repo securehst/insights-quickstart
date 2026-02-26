@@ -1,25 +1,25 @@
-x-superset-image: &superset-image
+x-insights-image: &insights-image
   ghcr.io/securehst/securehst-insights:${TAG:-latest}
 
-x-superset-volumes:
-  &superset-volumes
+x-insights-volumes:
+  &insights-volumes
   - ./docker/requirements-local.txt:/app/docker/requirements-local.txt
   - ./assets/logo.png:/app/superset/static/assets/images/logo.png
   - ./assets/favicon.png:/app/superset/static/assets/images/favicon.png
-  - superset_home:/app/superset_home
+  - insights_home:/app/superset_home
 
-x-superset-defaults: &superset-defaults
+x-insights-defaults: &insights-defaults
   env_file:
     - path: .env
       required: true
   environment:
-    DATABASE_DB: superset
+    DATABASE_DB: insights
     DATABASE_HOST: db
     DATABASE_PORT: "5432"
     DATABASE_DIALECT: postgresql
-    DATABASE_USER: superset
-    POSTGRES_DB: superset
-    POSTGRES_USER: superset
+    DATABASE_USER: insights
+    POSTGRES_DB: insights
+    POSTGRES_USER: insights
     POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
     REDIS_HOST: redis
     REDIS_PORT: "6379"
@@ -28,12 +28,12 @@ x-superset-defaults: &superset-defaults
     FLASK_DEBUG: "false"
     INSIGHTS_LOG_LEVEL: info
     SUPERSET_LOAD_EXAMPLES: "no"
-    COMPOSE_PROJECT_NAME: superset
+    COMPOSE_PROJECT_NAME: insights
 
 services:
   traefik:
     image: traefik:v3.6
-    container_name: superset_traefik
+    container_name: insights_traefik
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     ports:
@@ -49,60 +49,60 @@ services:
 
   db:
     image: postgres:16
-    container_name: superset_db
+    container_name: insights_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: superset
-      POSTGRES_USER: superset
+      POSTGRES_DB: insights
+      POSTGRES_USER: insights
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
     volumes:
       - db_home:/var/lib/postgresql/data
 
   redis:
     image: redis:7
-    container_name: superset_cache
+    container_name: insights_cache
     restart: unless-stopped
     volumes:
       - redis:/data
 
-  superset-init:
-    image: *superset-image
-    container_name: superset_init
+  insights-init:
+    image: *insights-image
+    container_name: insights_init
     command: ["/app/docker/docker-init.sh"]
-    <<: *superset-defaults
+    <<: *insights-defaults
     depends_on:
       db:
         condition: service_started
       redis:
         condition: service_started
     user: "root"
-    volumes: *superset-volumes
+    volumes: *insights-volumes
     healthcheck:
       disable: true
 
-  superset:
-    image: *superset-image
-    container_name: superset_app
+  insights:
+    image: *insights-image
+    container_name: insights_app
     command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
-    <<: *superset-defaults
+    <<: *insights-defaults
     restart: unless-stopped
     depends_on:
-      superset-init:
+      insights-init:
         condition: service_completed_successfully
     user: "root"
-    volumes: *superset-volumes
+    volumes: *insights-volumes
 
-  superset-worker:
-    image: *superset-image
-    container_name: superset_worker
+  insights-worker:
+    image: *insights-image
+    container_name: insights_worker
     command: ["/app/docker/docker-bootstrap.sh", "worker"]
-    <<: *superset-defaults
+    <<: *insights-defaults
     restart: unless-stopped
     depends_on:
-      superset-init:
+      insights-init:
         condition: service_completed_successfully
     user: "root"
-    volumes: *superset-volumes
+    volumes: *insights-volumes
     healthcheck:
       test:
         [
@@ -110,26 +110,26 @@ services:
           "celery -A superset.tasks.celery_app:app inspect ping -d celery@$$HOSTNAME",
         ]
 
-  superset-worker-beat:
-    image: *superset-image
-    container_name: superset_worker_beat
+  insights-worker-beat:
+    image: *insights-image
+    container_name: insights_worker_beat
     command: ["/app/docker/docker-bootstrap.sh", "beat"]
-    <<: *superset-defaults
+    <<: *insights-defaults
     restart: unless-stopped
     depends_on:
-      superset-init:
+      insights-init:
         condition: service_completed_successfully
     user: "root"
-    volumes: *superset-volumes
+    volumes: *insights-volumes
     healthcheck:
       disable: true
 
 volumes:
-  superset_home:
-    external: false
+  insights_home:
+    name: insights_home
   db_home:
-    external: false
+    name: insights_db_home
   redis:
-    external: false
+    name: insights_redis
   letsencrypt:
-    external: false
+    name: insights_letsencrypt

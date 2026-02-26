@@ -116,39 +116,39 @@ if [ "$is_local" = "true" ]; then
 cat > /etc/traefik/dynamic/routers.yml <<EOF
 http:
   routers:
-    superset:
+    insights:
       rule: "Host(\`${DOMAIN}\`)"
       entryPoints:
         - web
-      service: superset
+      service: insights
       middlewares:
         - secHeaders
 
   services:
-    superset:
+    insights:
       loadBalancer:
         servers:
-          - url: "http://superset:8088"
+          - url: "http://insights:8088"
 EOF
 else
 cat > /etc/traefik/dynamic/routers.yml <<EOF
 http:
   routers:
-    superset:
+    insights:
       rule: "Host(\`${DOMAIN}\`)"
       entryPoints:
         - websecure
-      service: superset
+      service: insights
       middlewares:
         - secHeaders
       tls:
         certResolver: letsencrypt
 
   services:
-    superset:
+    insights:
       loadBalancer:
         servers:
-          - url: "http://superset:8088"
+          - url: "http://insights:8088"
 EOF
 fi
 

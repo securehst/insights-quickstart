@@ -894,7 +894,7 @@ post_setup() {
             success "Services started!"
             echo ""
             echo "  ${BOLD}Next steps:${RESET}"
-            echo "    1. Watch initialization:  ${CYAN}docker compose logs -f superset-init${RESET}"
+            echo "    1. Watch initialization:  ${CYAN}docker compose logs -f insights-init${RESET}"
             echo "    2. Open:                  ${CYAN}${url}${RESET}"
             echo "    3. Login:                 ${CYAN}admin${RESET} / your chosen password"
             if ! is_local_domain "$CONF_DOMAIN"; then
@@ -907,7 +907,7 @@ post_setup() {
 
     echo "  ${BOLD}Next steps:${RESET}"
     echo "    1. Start services:        ${CYAN}docker compose up -d${RESET}"
-    echo "    2. Watch initialization:  ${CYAN}docker compose logs -f superset-init${RESET}"
+    echo "    2. Watch initialization:  ${CYAN}docker compose logs -f insights-init${RESET}"
     echo "    3. Open:                  ${CYAN}${url}${RESET}"
     echo "    4. Login:                 ${CYAN}admin${RESET} / your chosen password"
     if ! is_local_domain "$CONF_DOMAIN"; then
