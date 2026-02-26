@@ -1,0 +1,27 @@
+# =============================================================================
+# Traefik — Dynamic Configuration (Shared Middlewares)
+# =============================================================================
+
+http:
+  middlewares:
+    secHeaders:
+      headers:
+        # HSTS — enforce HTTPS for 1 year, include subdomains, preload-eligible
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+
+        # Prevent MIME-type sniffing
+        contentTypeNosniff: true
+
+        # Clickjacking protection (SAMEORIGIN allows Superset embedded dashboards)
+        frameDeny: false
+        customFrameOptionsValue: "SAMEORIGIN"
+
+        # Referrer policy
+        referrerPolicy: "strict-origin-when-cross-origin"
+
+        # Remove server identity headers
+        customResponseHeaders:
+          Server: ""
+          X-Powered-By: ""

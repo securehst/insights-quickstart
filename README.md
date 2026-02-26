@@ -73,7 +73,9 @@ Docker Desktop emulates amd64 on Apple Silicon Macs. For significantly better pe
    docker compose logs -f superset-init
    ```
 
-   When you see `Init Step 3/3 [Complete]` (or `4/4` if loading examples), open **http://localhost:8088** and log in with `admin` / your chosen password.
+   When you see `Init Step 3/3 [Complete]` (or `4/4` if loading examples), open **https://your-domain** (or `https://localhost` for local testing) and log in with `admin` / your chosen password.
+
+   > **Note:** Traefik handles TLS termination. For production, set `INSIGHTS_DOMAIN` and `ACME_EMAIL` in `.env` and ensure DNS points to your server. See [Traefik Reverse Proxy](#traefik-reverse-proxy) for details.
 
 ## Customizing Your Instance
 
@@ -156,32 +158,76 @@ Before going to production, verify these settings:
 - [ ] `ADMIN_PASSWORD` is changed from default
 - [ ] `DATABASE_PASSWORD` and `POSTGRES_PASSWORD` are changed from default
 - [ ] `FLASK_DEBUG=false`
-- [ ] `INSIGHTS_ENABLE_PROXY_FIX=true` (if behind a reverse proxy)
-- [ ] `INSIGHTS_SESSION_COOKIE_SECURE=true` (HTTPS deployments)
-- [ ] `INSIGHTS_FORCE_HTTPS=true` (HTTPS deployments)
+- [ ] `INSIGHTS_DOMAIN` is set to your public domain name
+- [ ] `ACME_EMAIL` is set to a valid email address
+- [ ] `INSIGHTS_ENABLE_PROXY_FIX=true` (enabled by default in `.env.example`)
+- [ ] `INSIGHTS_SESSION_COOKIE_SECURE=true` (enabled by default in `.env.example`)
+- [ ] `INSIGHTS_FORCE_HTTPS=true` (enabled by default in `.env.example`)
 - [ ] `INSIGHTS_TALISMAN_ENABLED=true`
+- [ ] DNS A/AAAA record for `INSIGHTS_DOMAIN` points to your server
 
-### Running Behind a Reverse Proxy
+### Traefik Reverse Proxy
 
-When running behind nginx, an ALB, or another reverse proxy:
+This stack includes a **Traefik v3 reverse proxy** that handles TLS termination with automatic Let's Encrypt certificates.
+
+#### Prerequisites
+
+1. A **public domain name** (e.g. `insights.example.com`) with DNS pointing to your server's IP
+2. Ports **80** and **443** open on the server (for HTTP challenge and HTTPS traffic)
+
+#### Configuration
+
+Set these variables in `.env`:
 
 ```bash
+# Your domain (must resolve to this server)
+INSIGHTS_DOMAIN=insights.example.com
+
+# Email for Let's Encrypt certificate expiry notifications
+ACME_EMAIL=admin@example.com
+
+# These are set by default in .env.example for HTTPS deployments:
 INSIGHTS_ENABLE_PROXY_FIX=true
 INSIGHTS_SESSION_COOKIE_SECURE=true
 INSIGHTS_FORCE_HTTPS=true
-INSIGHTS_SESSION_COOKIE_SAMESITE=Lax
 ```
 
-Example nginx location block:
+Then start the stack:
 
-```nginx
-location / {
-    proxy_pass http://127.0.0.1:8088;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
+```bash
+docker compose up -d
+```
+
+Traefik will automatically:
+- Obtain a TLS certificate from Let's Encrypt via HTTP challenge
+- Redirect all HTTP traffic to HTTPS
+- Add security headers (HSTS, X-Content-Type-Options, etc.)
+- Proxy traffic to the Superset application on port 8088 internally
+
+#### Security Headers
+
+Traefik applies a `secHeaders` middleware with:
+- **HSTS** (1 year, includeSubdomains, preload)
+- **X-Content-Type-Options**: nosniff
+- **X-Frame-Options**: SAMEORIGIN (allows Superset embedded dashboards)
+- **Referrer-Policy**: strict-origin-when-cross-origin
+
+Superset also has its own Talisman-based security headers (`INSIGHTS_TALISMAN_ENABLED`). Both layers can coexist as defense-in-depth. If you prefer a single source of truth, disable Talisman:
+
+```bash
+INSIGHTS_TALISMAN_ENABLED=false
+```
+
+#### Certificates
+
+Let's Encrypt certificates are stored in a Docker volume (`letsencrypt`) and persist across container restarts. Traefik renews them automatically before expiry.
+
+#### Local Development
+
+For local testing without a valid domain, Traefik will still start but won't obtain a valid certificate. You can access the application at `https://localhost` with a browser warning (self-signed/staging cert), or use:
+
+```bash
+curl -k https://localhost/health
 ```
 
 ### Rate Limiting
@@ -258,7 +304,11 @@ docker compose logs -f superset-worker
 ### Health Check
 
 ```bash
-curl -f http://localhost:8088/health
+# Production (with valid domain)
+curl -f https://${INSIGHTS_DOMAIN}/health
+
+# Local development
+curl -kf https://localhost/health
 ```
 
 ### Upgrading
@@ -318,9 +368,15 @@ All environment variables supported in `.env`:
 | `INSIGHTS_SECRET_KEY` | — | **Required.** Application secret key |
 | `ADMIN_PASSWORD` | `admin` | Initial admin user password |
 | `SUPERSET_LOAD_EXAMPLES` | `no` | Load sample dashboards on first init |
-| `INSIGHTS_PORT` | `8088` | Host port mapping |
 | `FLASK_DEBUG` | `false` | Flask debug mode |
 | `INSIGHTS_LOG_LEVEL` | `info` | Logging verbosity |
+
+### Traefik / TLS
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `INSIGHTS_DOMAIN` | `insights.example.com` | Domain for TLS certificate and routing |
+| `ACME_EMAIL` | `admin@example.com` | Let's Encrypt notification email |
 
 ### Branding
 
@@ -468,13 +524,16 @@ The default credentials are `admin` / the value of `ADMIN_PASSWORD` in your `.en
 docker compose exec superset superset fab reset-password --username admin --password newpassword
 ```
 
-### Port 8088 already in use
+### Port 80 or 443 already in use
 
-Change the port mapping in `.env`:
+Traefik needs ports 80 and 443. Stop any other web server (nginx, Apache, etc.) or adjust the port mappings in `docker-compose.yml` under the `traefik` service.
 
-```bash
-INSIGHTS_PORT=8090
-```
+### Certificate not issued / Let's Encrypt errors
+
+- Ensure `INSIGHTS_DOMAIN` resolves to your server's public IP (`dig +short ${INSIGHTS_DOMAIN}`)
+- Ensure port 80 is reachable from the internet (Let's Encrypt HTTP challenge requires this)
+- Check Traefik logs: `docker compose logs traefik`
+- Let's Encrypt has [rate limits](https://letsencrypt.org/docs/rate-limits/) — if testing frequently, consider using a staging resolver
 
 ### Database driver not found
 

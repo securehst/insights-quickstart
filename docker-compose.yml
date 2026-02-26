@@ -31,6 +31,21 @@ x-superset-defaults: &superset-defaults
     COMPOSE_PROJECT_NAME: superset
 
 services:
+  traefik:
+    image: traefik:v3.6
+    container_name: superset_traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic/:/etc/traefik/dynamic/:ro
+      - letsencrypt:/letsencrypt
+
   db:
     image: postgres:16
     platform: linux/amd64
@@ -74,13 +89,18 @@ services:
     command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
     <<: *superset-defaults
     restart: unless-stopped
-    ports:
-      - "${INSIGHTS_PORT:-8088}:8088"
     depends_on:
       superset-init:
         condition: service_completed_successfully
     user: "root"
     volumes: *superset-volumes
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.superset.rule=Host(`${INSIGHTS_DOMAIN}`)"
+      - "traefik.http.routers.superset.entrypoints=websecure"
+      - "traefik.http.routers.superset.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.superset.middlewares=secHeaders@file"
+      - "traefik.http.services.superset.loadbalancer.server.port=8088"
 
   superset-worker:
     image: *superset-image
@@ -122,4 +142,6 @@ volumes:
   db_home:
     external: false
   redis:
+    external: false
+  letsencrypt:
     external: false
