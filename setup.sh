@@ -260,7 +260,11 @@ prompt_value() {
         printf '%s: ' "$prompt_text" >&2
     fi
 
-    read -r result
+    if [ -t 0 ]; then
+        read -r result
+    else
+        read -r result < /dev/tty || true
+    fi
     result=$(printf '%s' "$result" | tr -d '\r')
 
     if [ -z "$result" ]; then
@@ -293,7 +297,7 @@ prompt_password() {
             read -rs result
             echo "" >&2
         else
-            read -r result
+            read -r result < /dev/tty || true
         fi
 
         result=$(printf '%s' "$result" | tr -d '\r')
@@ -318,7 +322,7 @@ prompt_password() {
             read -rs confirm
             echo "" >&2
         else
-            read -r confirm
+            read -r confirm < /dev/tty || true
         fi
 
         confirm=$(printf '%s' "$confirm" | tr -d '\r')
@@ -349,7 +353,11 @@ prompt_yes_no() {
 
     while true; do
         printf '%s [%s]: ' "$prompt_text" "$hint" >&2
-        read -r answer
+        if [ -t 0 ]; then
+            read -r answer
+        else
+            read -r answer < /dev/tty || true
+        fi
         answer=$(printf '%s' "$answer" | tr -d '\r')
 
         case "$answer" in
