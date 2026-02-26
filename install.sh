@@ -432,8 +432,27 @@ clone_or_update() {
             else
                 warn "Directory '$INSTALL_DIR' exists and is not empty (not a git repo)."
                 if ask "  Remove its contents and clone fresh?" "n"; then
+                    # Resolve to absolute path for safety checks.
+                    local resolved_dir
+                    resolved_dir="$(cd "$INSTALL_DIR" && pwd)"
+                    # Guard against accidentally deleting critical directories.
+                    case "$resolved_dir" in
+                        /|/bin|/boot|/dev|/etc|/home|/lib*|/opt|/proc|/root|/run|/sbin|/sys|/tmp|/usr|/usr/*|/var|/var/*)
+                            error "Refusing to delete system directory '$resolved_dir'."
+                            exit 1
+                            ;;
+                    esac
+                    if [ "$resolved_dir" = "$HOME" ]; then
+                        error "Refusing to delete home directory '$resolved_dir'."
+                        exit 1
+                    fi
                     info "Removing '$INSTALL_DIR' and cloning fresh..."
-                    rm -rf "$INSTALL_DIR"
+                    # Move out of the directory before deleting it, in case
+                    # it is the shell's current working directory.
+                    local parent_dir
+                    parent_dir="$(cd "$INSTALL_DIR/.."; pwd)"
+                    cd "$parent_dir"
+                    rm -rf "$resolved_dir"
                     git clone "$REPO_URL" "$INSTALL_DIR"
                     success "Repository cloned"
                 else
