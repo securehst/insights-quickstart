@@ -2,6 +2,25 @@
 
 SecureHST Insights is a managed data visualization and business intelligence platform built on Apache Superset. This repository contains everything you need to deploy your own branded instance using pre-built Docker images.
 
+## One-Command Install
+
+**Linux / macOS:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/securehst/insights-quickstart/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/securehst/insights-quickstart/main/install.ps1 | iex
+```
+
+The installer checks for required tools (git, Docker, Docker Compose), offers to install
+any that are missing, clones this repository, and launches the interactive setup wizard.
+
+---
+
 ## Prerequisites
 
 | Requirement | Minimum |
@@ -23,6 +42,8 @@ All container images are multi-architecture (`linux/amd64` and `linux/arm64`). T
 | **Windows (x86_64)** | Runs natively inside Docker Desktop's Linux VM — no extra steps. |
 
 ## Quick Start
+
+> **Tip:** The [one-command installer](#one-command-install) above handles prerequisites and cloning automatically. The steps below are for manual setup.
 
 1. **Clone this repository**
 
