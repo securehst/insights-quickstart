@@ -49,7 +49,6 @@ services:
 
   db:
     image: postgres:16
-    platform: linux/amd64
     container_name: superset_db
     restart: unless-stopped
     environment:
@@ -61,7 +60,6 @@ services:
 
   redis:
     image: redis:7
-    platform: linux/amd64
     container_name: superset_cache
     restart: unless-stopped
     volumes:
@@ -69,7 +67,6 @@ services:
 
   superset-init:
     image: *superset-image
-    platform: linux/amd64
     container_name: superset_init
     command: ["/app/docker/docker-init.sh"]
     <<: *superset-defaults
@@ -85,7 +82,6 @@ services:
 
   superset:
     image: *superset-image
-    platform: linux/amd64
     container_name: superset_app
     command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
     <<: *superset-defaults
@@ -98,7 +94,6 @@ services:
 
   superset-worker:
     image: *superset-image
-    platform: linux/amd64
     container_name: superset_worker
     command: ["/app/docker/docker-bootstrap.sh", "worker"]
     <<: *superset-defaults
@@ -117,7 +112,6 @@ services:
 
   superset-worker-beat:
     image: *superset-image
-    platform: linux/amd64
     container_name: superset_worker_beat
     command: ["/app/docker/docker-bootstrap.sh", "beat"]
     <<: *superset-defaults

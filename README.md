@@ -13,24 +13,14 @@ SecureHST Insights is a managed data visualization and business intelligence pla
 
 ### Platform Compatibility
 
-All container images are built for **linux/amd64**. This works on every major OS:
+All container images are multi-architecture (`linux/amd64` and `linux/arm64`). This works on every major OS:
 
 | Platform | Notes |
 |----------|-------|
-| **Linux (x86_64)** | Runs natively — no extra steps. |
+| **Linux (x86_64 / ARM64)** | Runs natively — no extra steps. |
 | **macOS (Intel)** | Runs natively — no extra steps. |
-| **macOS (Apple Silicon)** | Runs via emulation. **Enable Rosetta** in Docker Desktop for best performance (see below). |
+| **macOS (Apple Silicon)** | Runs natively — no extra steps. |
 | **Windows (x86_64)** | Runs natively inside Docker Desktop's Linux VM — no extra steps. |
-
-#### Apple Silicon (M1/M2/M3/M4) Setup
-
-Docker Desktop emulates amd64 on Apple Silicon Macs. For significantly better performance, enable Rosetta:
-
-1. Open **Docker Desktop** → **Settings** → **General**
-2. Check **Use Rosetta for x86_64/amd64 emulation on Apple Silicon**
-3. Click **Apply & restart**
-
-> Without Rosetta enabled the containers will still run, but you may notice slower startup times and higher CPU usage.
 
 ## Quick Start
 
@@ -41,31 +31,41 @@ Docker Desktop emulates amd64 on Apple Silicon Macs. For significantly better pe
    cd insights
    ```
 
-2. **Create your environment file**
+2. **Run the setup wizard**
+
+   ```bash
+   bash setup.sh
+   ```
+
+   The wizard walks you through configuration, auto-generates secrets, and offers to start the stack for you. On Windows, use `.\setup.ps1` from PowerShell (requires WSL).
+
+   For automated/CI environments:
+
+   ```bash
+   bash setup.sh --non-interactive
+   ```
+
+   <details>
+   <summary>Manual setup (without the wizard)</summary>
 
    ```bash
    cp .env.example .env
    ```
 
-3. **Generate a secret key**
+   Generate a secret key and paste it into `.env` as `INSIGHTS_SECRET_KEY`:
 
    ```bash
    python3 -c "import secrets; print(secrets.token_urlsafe(42))"
    ```
 
-   Paste the output into `.env` as the value of `INSIGHTS_SECRET_KEY`.
-
-4. **Set your admin password**
-
-   Edit `.env` and change `ADMIN_PASSWORD` to something secure.
-
-5. **Start the stack**
+   Edit `.env` and change `ADMIN_PASSWORD` to something secure, then start the stack:
 
    ```bash
    docker compose up -d
    ```
+   </details>
 
-6. **Wait for initialization to complete**
+3. **Wait for initialization to complete**
 
    The first run takes a few minutes while the database is set up. Watch progress with:
 
@@ -73,7 +73,7 @@ Docker Desktop emulates amd64 on Apple Silicon Macs. For significantly better pe
    docker compose logs -f superset-init
    ```
 
-   When you see `Init Step 3/3 [Complete]` (or `4/4` if loading examples), open **https://your-domain** (or `https://localhost` for local testing) and log in with `admin` / your chosen password.
+   When you see `Init Step 3/3 [Complete]` (or `4/4` if loading examples), open **https://your-domain** (or `http://localhost` for local testing) and log in with `admin` / your chosen password.
 
    > **Note:** Traefik handles TLS termination. For production, set `INSIGHTS_DOMAIN` and `ACME_EMAIL` in `.env` and ensure DNS points to your server. See [Traefik Reverse Proxy](#traefik-reverse-proxy) for details.
 
@@ -224,10 +224,10 @@ Let's Encrypt certificates are stored in a Docker volume (`letsencrypt`) and per
 
 #### Local Development
 
-For local testing without a valid domain, Traefik will still start but won't obtain a valid certificate. You can access the application at `https://localhost` with a browser warning (self-signed/staging cert), or use:
+For local testing without a valid domain, Traefik will still start but won't obtain a valid certificate. You can access the application at `http://localhost` (Traefik serves HTTP-only in local mode):
 
 ```bash
-curl -k https://localhost/health
+curl -f http://localhost/health
 ```
 
 ### Rate Limiting
@@ -308,7 +308,7 @@ docker compose logs -f superset-worker
 curl -f https://${INSIGHTS_DOMAIN}/health
 
 # Local development
-curl -kf https://localhost/health
+curl -f http://localhost/health
 ```
 
 ### Upgrading
@@ -549,18 +549,6 @@ Thumbnail generation uses Playwright and can take a moment on first access. Chec
 
 ```bash
 docker compose logs -f superset-worker
-```
-
-### Slow performance on Apple Silicon Macs
-
-The images are linux/amd64 and run under emulation on M-series Macs. Enable Rosetta in Docker Desktop for a significant speedup:
-
-**Docker Desktop** → **Settings** → **General** → check **Use Rosetta for x86_64/amd64 emulation on Apple Silicon** → **Apply & restart**
-
-Then restart the stack:
-
-```bash
-docker compose down && docker compose up -d
 ```
 
 ### "SECRET_KEY must be set" error

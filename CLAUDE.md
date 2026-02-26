@@ -19,7 +19,7 @@ docker compose logs -f superset-init     # Init/migration logs
 docker compose logs -f superset-worker   # Celery worker logs
 
 # Health check
-curl -kf https://localhost/health
+curl -f http://localhost/health
 
 # Restart a single service
 docker compose restart superset
