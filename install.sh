@@ -441,6 +441,7 @@ clone_or_update() {
                     exit 1
                 fi
             fi
+            return 0
         fi
     fi
 
