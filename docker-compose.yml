@@ -35,15 +35,16 @@ services:
     image: traefik:v3.6
     container_name: superset_traefik
     restart: unless-stopped
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     ports:
       - "80:80"
       - "443:443"
     environment:
-      ACME_EMAIL: ${ACME_EMAIL}
+      INSIGHTS_DOMAIN: ${INSIGHTS_DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
     volumes:
+      - ./traefik/entrypoint.sh:/entrypoint.sh:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./traefik/dynamic/:/etc/traefik/dynamic/:ro
       - letsencrypt:/letsencrypt
 
   db:
@@ -94,13 +95,6 @@ services:
         condition: service_completed_successfully
     user: "root"
     volumes: *superset-volumes
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.superset.rule=Host(`${INSIGHTS_DOMAIN}`)"
-      - "traefik.http.routers.superset.entrypoints=websecure"
-      - "traefik.http.routers.superset.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.superset.middlewares=secHeaders@file"
-      - "traefik.http.services.superset.loadbalancer.server.port=8088"
 
   superset-worker:
     image: *superset-image
