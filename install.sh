@@ -423,9 +423,24 @@ clone_or_update() {
             fi
             return 0
         else
-            error "Directory '$INSTALL_DIR' exists but is not a git repository."
-            echo "  Please remove it or choose a different directory and re-run."
-            exit 1
+            # Directory exists but is not a git repo
+            if [ -z "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
+                # Empty directory — clone into it
+                info "Directory '$INSTALL_DIR' exists but is empty. Cloning into it..."
+                git clone "$REPO_URL" "$INSTALL_DIR"
+                success "Repository cloned"
+            else
+                warn "Directory '$INSTALL_DIR' exists and is not empty (not a git repo)."
+                if ask "  Remove its contents and clone fresh?" "n"; then
+                    info "Removing '$INSTALL_DIR' and cloning fresh..."
+                    rm -rf "$INSTALL_DIR"
+                    git clone "$REPO_URL" "$INSTALL_DIR"
+                    success "Repository cloned"
+                else
+                    error "Please choose a different directory and re-run."
+                    exit 1
+                fi
+            fi
         fi
     fi
 
